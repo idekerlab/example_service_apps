@@ -13,9 +13,13 @@ from examplecywebserviceapp.serviceappmodel.cy_result_status import CyResultStat
 from examplecywebserviceapp.serviceappmodel.cy_server_status import CyServerStatus  # noqa: E501
 from examplecywebserviceapp.serviceappmodel.cy_web_menu_item import CyWebMenuItem  # noqa: E501
 from examplecywebserviceapp.serviceappmodel.cy_web_menu_item_path import CyWebMenuItemPath # noqa: E501
+from examplecywebserviceapp.serviceappmodel.cy_service_input_definition import CyServiceInputDefinition  # noqa: E501
+from examplecywebserviceapp.serviceappmodel.cy_input_network import CyInputNetwork  # noqa: E501
 from examplecywebserviceapp import util
 
 APP_VERSION='1.0'
+
+TASK_DB = {}
 
 def delete_request(id):  # noqa: E501
     """Deletes task associated with {id} passed in
@@ -44,7 +48,11 @@ def get_meta_data():  # noqa: E501
                                                           gravity=10),
                                         CyWebMenuItemPath(name='Python-Flask Add Column',
                                                           gravity=10)])
-    serviceinputdefinition = None
+    inputnetwork = CyInputNetwork(model='network',
+                                  format='cx2')
+    serviceinputdefinition = CyServiceInputDefinition(type='network',
+                                                      scope='dynamic',
+                                                      input_network=inputnetwork)
     return CyMetaData(name='Example Python-Flask Service-App',
                       version=APP_VERSION,
                       description='Example Python-Flask Service-App that adds a new '
@@ -108,11 +116,15 @@ def request(cy_request):  # noqa: E501
 
     :rtype: Union[CyRequestId, Tuple[CyRequestId, int], Tuple[CyRequestId, int, Dict[str, str]]
     """
-    if connexion.request.is_json:
-        cy_request = CyRequest.from_dict(connexion.request.get_json())  # noqa: E501
-    request_id = str(uuid.uuid4())
+    # if connexion.request.is_json:
+    #    cy_request = CyRequest.from_dict(connexion.request.get_json())  # noqa: E501
     print(cy_request)
-    return CyRequestId(id=request_id), 202, {'Location:', 'http://localhost:8080/' + request_id }
+
+    #print(connexion.request)
+    request_id = str(uuid.uuid4())
+    #print(request_id)
+    #TASK_DB[request_id] =
+    return CyRequestId(id=request_id), 202, {'Location:', 'http://localhost:8080/example/' + request_id }
 
 
 def status():  # noqa: E501
