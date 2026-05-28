@@ -15,20 +15,36 @@ from examplecywebserviceapp.test import BaseTestCase
 class TestDefaultController(BaseTestCase):
     """DefaultController integration test stubs"""
 
+    def _submit_request(self, data=None):
+        cy_request = {
+            "data": data if data is not None else {},
+            "parameters": {"key": "parameters"},
+            "algorithm": "updatetablesexample",
+        }
+        response = self.client.open(
+            '/example',
+            method='POST',
+            data=json.dumps(cy_request),
+            content_type='application/json')
+        self.assertStatus(response, 202,
+                          'Response body is : ' + response.data.decode('utf-8'))
+        return json.loads(response.data.decode('utf-8'))['id']
+
     def test_delete_request(self):
         """Test case for delete_request
 
         Deletes task associated with {id} passed in
         """
+        request_id = self._submit_request()
         headers = { 
             'Accept': 'application/json',
         }
         response = self.client.open(
-            '/{id}'.format(id='id_example'),
+            '/example/{id}'.format(id=request_id),
             method='DELETE',
             headers=headers)
-        self.assert200(response,
-                       'Response body is : ' + response.data.decode('utf-8'))
+        self.assertStatus(response, 204,
+                          'Response body is : ' + response.data.decode('utf-8'))
 
     def test_get_meta_data(self):
         """Test case for get_meta_data
@@ -39,7 +55,7 @@ class TestDefaultController(BaseTestCase):
             'Accept': 'application/json',
         }
         response = self.client.open(
-            '/',
+            '/example',
             method='GET',
             headers=headers)
         self.assert200(response,
@@ -50,49 +66,114 @@ class TestDefaultController(BaseTestCase):
 
         Gets status of task
         """
+        request_id = self._submit_request()
         headers = { 
             'Accept': 'application/json',
         }
         response = self.client.open(
-            '/{id}/status'.format(id='id_example'),
+            '/example/{id}/status'.format(id=request_id),
             method='GET',
             headers=headers)
-        self.assert200(response,
-                       'Response body is : ' + response.data.decode('utf-8'))
+        self.assertStatus(response, 200,
+                          'Response body is : ' + response.data.decode('utf-8'))
+        self.assertEqual(json.loads(response.data.decode('utf-8'))['status'], 'complete')
 
     def test_get_result(self):
         """Test case for get_result
 
         Gets result of task
         """
+        request_id = self._submit_request()
         headers = { 
             'Accept': 'application/json',
         }
         response = self.client.open(
-            '/{id}'.format(id='id_example'),
+            '/example/{id}'.format(id=request_id),
             method='GET',
             headers=headers)
         self.assert200(response,
                        'Response body is : ' + response.data.decode('utf-8'))
+        self.assertEqual(json.loads(response.data.decode('utf-8'))['status'], 'complete')
+
+    def test_get_result_returns_cx2_array_data(self):
+        """Test case for getting result data as an action/data list"""
+        cx2_data = [
+            {"CXVersion": "2.0", "hasFragments": False},
+            {"nodes": [{"id": 0, "v": {"name": "CAV1"}}]},
+        ]
+        request_id = self._submit_request(data=cx2_data)
+        headers = {
+            'Accept': 'application/json',
+        }
+        response = self.client.open(
+            '/example/{id}'.format(id=request_id),
+            method='GET',
+            headers=headers)
+        self.assert200(response,
+                       'Response body is : ' + response.data.decode('utf-8'))
+        result = json.loads(response.data.decode('utf-8'))['result']
+        self.assertEqual(result, [{'action': 'updateTables', 'data': cx2_data}])
 
     def test_request(self):
         """Test case for request
 
         Submits task
         """
-        cy_request = {"data":"{}","parameters":{"key":"parameters"},"algorithm":"updatetablesexample"}
+        cy_request = {"data": {}, "parameters": {"key": "parameters"}, "algorithm": "updatetablesexample"}
         headers = { 
             'Accept': 'application/json',
             'Content-Type': 'application/json',
         }
         response = self.client.open(
-            '/',
+            '/example/',
             method='POST',
             headers=headers,
             data=json.dumps(cy_request),
             content_type='application/json')
-        self.assert200(response,
-                       'Response body is : ' + response.data.decode('utf-8'))
+        self.assertStatus(response, 202,
+                          'Response body is : ' + response.data.decode('utf-8'))
+        self.assertIn('/example/', response.headers.get('Location'))
+
+    def test_request_accepts_serialized_json_data(self):
+        """Test case for request with data passed as a serialized JSON object"""
+        cy_request = {"data": "{}", "parameters": {"key": "parameters"}, "algorithm": "updatetablesexample"}
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+        }
+        response = self.client.open(
+            '/example',
+            method='POST',
+            headers=headers,
+            data=json.dumps(cy_request),
+            content_type='application/json')
+        self.assertStatus(response, 202,
+                          'Response body is : ' + response.data.decode('utf-8'))
+        self.assertIn('/example/', response.headers.get('Location'))
+
+    def test_request_accepts_cx2_array_data(self):
+        """Test case for request with data passed as a CX2 aspect array"""
+        cy_request = {
+            "algorithm": "updatetablesexample",
+            "data": [
+                {"CXVersion": "2.0", "hasFragments": False},
+                {"nodes": [{"id": 0, "v": {"name": "CAV1"}}]},
+            ],
+            "parameters": {"key": "parameters"},
+        }
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+        }
+        response = self.client.open(
+            '/example',
+            method='POST',
+            headers=headers,
+            data=json.dumps(cy_request),
+            content_type='application/json')
+        self.assertStatus(response, 202,
+                          'Response body is : ' + response.data.decode('utf-8'))
+        self.assertIn('/example/', response.headers.get('Location'))
 
     def test_status(self):
         """Test case for status
@@ -103,7 +184,7 @@ class TestDefaultController(BaseTestCase):
             'Accept': 'application/json',
         }
         response = self.client.open(
-            '/status',
+            '/example/status',
             method='GET',
             headers=headers)
         self.assert200(response,

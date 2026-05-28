@@ -719,9 +719,33 @@ components:
           title: startTime
           type: integer
         result:
-          description: data as json fragment
-          title: data
-          type: object
+          description: Ordered list of actions to perform with the result data
+          items:
+            properties:
+              action:
+                description: Action to perform with the associated data
+                enum:
+                - addNetworks
+                - addTables
+                - openURL
+                - updateLayouts
+                - updateNetwork
+                - updateSelection
+                - updateTables
+                type: string
+              data:
+                description: Data for the action
+                oneOf:
+                - type: object
+                - type: string
+                - type: array
+                  items: {}
+            required:
+            - action
+            - data
+            type: object
+          title: result
+          type: array
       title: CyResult
       type: object
     JsonNode:
@@ -754,7 +778,11 @@ components:
         data:
           description: data as json fragment
           title: data
-          type: object
+          oneOf:
+          - type: object
+          - type: string
+          - type: array
+            items: {}
         parameters:
           additionalProperties:
             description: "Optional parameters in simple map format arg: value"

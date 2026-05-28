@@ -1,16 +1,12 @@
 import logging
 
-import connexion
 from flask_testing import TestCase
 
-from examplecywebserviceapp.encoder import JSONEncoder
+from examplecywebserviceapp.__main__ import create_app
 
 
 class BaseTestCase(TestCase):
 
     def create_app(self):
         logging.getLogger('connexion.operation').setLevel('ERROR')
-        app = connexion.App(__name__, specification_dir='../openapi/')
-        app.app.json_encoder = JSONEncoder
-        app.add_api('openapi.yaml', pythonic_params=True)
-        return app.app
+        return create_app().app

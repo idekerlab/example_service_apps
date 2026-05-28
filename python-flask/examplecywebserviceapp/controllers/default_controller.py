@@ -1,5 +1,6 @@
 import uuid
 import connexion
+from time import time
 from typing import Dict
 from typing import Tuple
 from typing import Union
@@ -18,10 +19,16 @@ from examplecywebserviceapp.serviceappmodel.cy_input_network import CyInputNetwo
 from examplecywebserviceapp import util
 
 APP_VERSION='1.0'
+CY_WEB_ACTION = 'updateTables'
 
 TASK_DB = {}
 
-def delete_request(id):  # noqa: E501
+
+def _current_time_millis():
+    return int(time() * 1000)
+
+
+def delete_request(id_=None):  # noqa: E501
     """Deletes task associated with {id} passed in
 
      # noqa: E501
@@ -31,7 +38,11 @@ def delete_request(id):  # noqa: E501
 
     :rtype: Union[None, Tuple[None, int], Tuple[None, int, Dict[str, str]]
     """
-    return 'do some magic!'
+    if id_ in TASK_DB:
+        del TASK_DB[id_]
+        return None, 204
+
+    return CyErrorResponse(message='Task not found'), 400
 
 
 def get_meta_data():  # noqa: E501
@@ -64,7 +75,7 @@ def get_meta_data():  # noqa: E501
                       tutorial='https://github.com/idekerlab/example_service_apps',
                       website='https://web-manual.cytoscape.org/',
                       parameters=params,
-                      cy_web_actions=['updateTables'],
+                      cy_web_actions=[CY_WEB_ACTION],
                       cy_web_menu_item=cywebmenuitem,
                       service_input_definition=serviceinputdefinition), 200
 
@@ -79,12 +90,21 @@ def get_request_status(id_=None):  # noqa: E501
 
     :rtype: Union[CyResultStatus, Tuple[CyResultStatus, int], Tuple[CyResultStatus, int, Dict[str, str]]
     """
+    task = TASK_DB.get(id_)
+    if task is None:
+        return CyResultStatus(id=id_,
+                              status='failed',
+                              message='Task not found',
+                              progress=100,
+                              wall_time=0,
+                              start_time=0), 400
+
     return CyResultStatus(id=id_,
-                          status='failed',
-                          message='Not implemented',
-                          progress=100,
-                          wall_time=0,
-                          start_time=0), 500
+                          status=task['status'],
+                          message=task['message'],
+                          progress=task['progress'],
+                          wall_time=task['wall_time'],
+                          start_time=task['start_time']), 200
 
 
 def get_result(id_=None):  # noqa: E501
@@ -97,16 +117,26 @@ def get_result(id_=None):  # noqa: E501
 
     :rtype: Union[CyResult, Tuple[CyResult, int], Tuple[CyResult, int, Dict[str, str]]
     """
+    task = TASK_DB.get(id_)
+    if task is None:
+        return CyResult(id=id_,
+                        status='failed',
+                        message='Task not found',
+                        progress=100,
+                        wall_time=0,
+                        start_time=0,
+                        result=None), 400
+
     return CyResult(id=id_,
-                    status='failed',
-                    message='Not implemented',
-                    progress=100,
-                    wall_time=0,
-                    start_time=0,
-                    result=None)
+                    status=task['status'],
+                    message=task['message'],
+                    progress=task['progress'],
+                    wall_time=task['wall_time'],
+                    start_time=task['start_time'],
+                    result=task['result']), 200
 
 
-def request(cy_request):  # noqa: E501
+def request(cy_request=None):  # noqa: E501
     """Submits task
 
     Payload in JSON format needs to have data along with name of algorithm to run and any algorithm specific parameters. Information about what algorithms are availableand what are the custom parameters can obtained by visiting the &#39;algorithms&#39;endpoint   The service should upon post return 202 and set location to resource to poll for result. Which will Match the URL of GET request below. # noqa: E501
@@ -116,15 +146,21 @@ def request(cy_request):  # noqa: E501
 
     :rtype: Union[CyRequestId, Tuple[CyRequestId, int], Tuple[CyRequestId, int, Dict[str, str]]
     """
-    # if connexion.request.is_json:
-    #    cy_request = CyRequest.from_dict(connexion.request.get_json())  # noqa: E501
-    print(cy_request)
+    if cy_request is None and connexion.request.is_json:
+        cy_request = connexion.request.get_json()
 
-    #print(connexion.request)
+    result_data = cy_request.get('data') if isinstance(cy_request, dict) else cy_request
     request_id = str(uuid.uuid4())
-    #print(request_id)
-    #TASK_DB[request_id] =
-    return CyRequestId(id=request_id), 202, {'Location:', 'http://localhost:8080/example/' + request_id }
+    start_time = _current_time_millis()
+    TASK_DB[request_id] = {
+        'status': 'complete',
+        'message': None,
+        'progress': 100,
+        'wall_time': _current_time_millis() - start_time,
+        'start_time': start_time,
+        'result': [{'action': CY_WEB_ACTION, 'data': result_data}],
+    }
+    return CyRequestId(id=request_id), 202, {'Location': 'http://localhost:8080/example/' + request_id}
 
 
 def status():  # noqa: E501
