@@ -112,7 +112,15 @@ class TestDefaultController(BaseTestCase):
         self.assert200(response,
                        'Response body is : ' + response.data.decode('utf-8'))
         result = json.loads(response.data.decode('utf-8'))['result']
-        self.assertEqual(result, [{'action': 'updateTables', 'data': cx2_data}])
+        self.assertEqual(result[0]['action'], 'updateNetwork')
+        self.assertIsInstance(result[0]['data'], list)
+        node_aspects = [aspect['nodes'] for aspect in result[0]['data'] if 'nodes' in aspect]
+        self.assertTrue(node_aspects)
+        self.assertEqual(len(node_aspects[0]), 3)
+        self.assertEqual(
+            len([node for node in node_aspects[0]
+                 if node['v']['name'].startswith('Random Node ')]),
+            2)
 
     def test_request(self):
         """Test case for request

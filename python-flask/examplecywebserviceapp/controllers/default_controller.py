@@ -1,5 +1,8 @@
 import uuid
 import connexion
+import json
+import random
+from ndex2.cx2 import RawCX2NetworkFactory
 from time import time
 from typing import Dict
 from typing import Tuple
@@ -19,13 +22,44 @@ from examplecywebserviceapp.serviceappmodel.cy_input_network import CyInputNetwo
 from examplecywebserviceapp import util
 
 APP_VERSION='1.0'
-CY_WEB_ACTION = 'updateTables'
+CY_WEB_ACTION = 'updateNetwork'
 
 TASK_DB = {}
 
 
 def _current_time_millis():
     return int(time() * 1000)
+
+
+def _extract_request_data(cy_request):
+    if not isinstance(cy_request, dict):
+        return cy_request
+
+    data = cy_request.get('data')
+    if isinstance(data, str):
+        try:
+            return json.loads(data)
+        except ValueError:
+            return data
+    return data
+
+
+def _add_random_nodes_to_cx2(data):
+    if not isinstance(data, list):
+        return data
+
+    cx2_network = RawCX2NetworkFactory().get_cx2network(data)
+    for _ in range(2):
+        node_suffix = random.randint(100000, 999999)
+        cx2_network.add_node(
+            attributes={
+                'name': 'Random Node {0}'.format(node_suffix),
+                'type': 'generated',
+            },
+            x=random.uniform(0, 1000),
+            y=random.uniform(0, 1000))
+
+    return cx2_network.to_cx2()
 
 
 def delete_request(id_=None):  # noqa: E501
@@ -66,8 +100,8 @@ def get_meta_data():  # noqa: E501
                                                       input_network=inputnetwork)
     return CyMetaData(name='Example Python-Flask Service-App',
                       version=APP_VERSION,
-                      description='Example Python-Flask Service-App that adds a new '
-                                  'nodes column to current network',
+                      description='Example Python-Flask Service-App that adds random '
+                                  'nodes to the current network',
                       author='Chris Churas',
                       email='NotSet',
                       citation='NA',
@@ -149,7 +183,7 @@ def request(cy_request=None):  # noqa: E501
     if cy_request is None and connexion.request.is_json:
         cy_request = connexion.request.get_json()
 
-    result_data = cy_request.get('data') if isinstance(cy_request, dict) else cy_request
+    result_data = _add_random_nodes_to_cx2(_extract_request_data(cy_request))
     request_id = str(uuid.uuid4())
     start_time = _current_time_millis()
     TASK_DB[request_id] = {
